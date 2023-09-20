@@ -750,7 +750,10 @@ class ToneSandhi:
         return new_seg
 
     def pre_merge_for_modify(self, seg: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+        # 合并“不”字
         seg = self._merge_bu(seg)
+        # 合并“一”字
+        # 为什么这里要try catch
         try:
             seg = self._merge_yi(seg)
         except:

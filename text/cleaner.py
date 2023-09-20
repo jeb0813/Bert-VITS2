@@ -6,11 +6,13 @@ language_module_map = {"ZH": chinese, "JP": japanese}
 
 def clean_text(text, language):
     language_module = language_module_map[language]
+    # 这里规范了数字、嗯呣等文本
     norm_text = language_module.text_normalize(text)
+    # 音素、音调、每个字对应的音素数量
     phones, tones, word2ph = language_module.g2p(norm_text)
     return norm_text, phones, tones, word2ph
 
-
+# 好像没被用到
 def clean_text_bert(text, language):
     language_module = language_module_map[language]
     norm_text = language_module.text_normalize(text)

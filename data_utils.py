@@ -44,6 +44,8 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
 
         random.seed(1234)
         random.shuffle(self.audiopaths_sid_text)
+        
+        # here calls filter func
         self._filter()
 
     def _filter(self):
@@ -82,6 +84,8 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
         self.lengths = lengths
 
     def get_audio_text_speaker_pair(self, audiopath_sid_text):
+        # 为什么audiopath_sid_text是个数组，这个命名一坨答辩
+        # 具体格式参照filelists
         # separate filename, speaker_id and text
         audiopath, sid, language, text, phones, tone, word2ph = audiopath_sid_text
 
@@ -161,6 +165,9 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
         else:
             bert = torch.zeros(1024, len(phone))
             ja_bert = torch.zeros(768, len(phone))
+
+        # 这里利用了bert
+        # 它具体做了什么？
         assert bert.shape[-1] == len(phone), (
             bert.shape,
             len(phone),

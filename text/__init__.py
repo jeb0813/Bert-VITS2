@@ -12,6 +12,8 @@ def cleaned_text_to_sequence(cleaned_text, tones, language):
       List of integers corresponding to the symbols in the text
     """
     phones = [_symbol_to_id[symbol] for symbol in cleaned_text]
+    # 这里做了tone的处理
+    # 看起来只是做了一个偏移，防止不同语言的音调重叠
     tone_start = language_tone_start_map[language]
     tones = [i + tone_start for i in tones]
     lang_id = language_id_map[language]
@@ -20,6 +22,7 @@ def cleaned_text_to_sequence(cleaned_text, tones, language):
 
 
 def get_bert(norm_text, word2ph, language, device):
+    # 这里的norm_text应该是音素才对吧
     from .chinese_bert import get_bert_feature as zh_bert
     from .english_bert_mock import get_bert_feature as en_bert
     from .japanese_bert import get_bert_feature as jp_bert

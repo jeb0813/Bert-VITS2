@@ -67,6 +67,7 @@ def replace_punctuation(text):
 
 def g2p(text):
     pattern = r"(?<=[{0}])\s*".format("".join(punctuation))
+    # 根据标点符号分句
     sentences = [i for i in re.split(pattern, text) if i.strip() != ""]
     phones, tones, word2ph = _g2p(sentences)
     assert sum(word2ph) == len(phones)
@@ -96,23 +97,34 @@ def _g2p(segments):
     word2ph = []
     for seg in segments:
         # Replace all English words in the sentence
+        # how to pronounce other language 
         seg = re.sub("[a-zA-Z]+", "", seg)
+        # 中文分词和词性
+        # returns a list
         seg_cut = psg.lcut(seg)
         initials = []
         finals = []
+        # 预处理分词，合并一些词汇
         seg_cut = tone_modifier.pre_merge_for_modify(seg_cut)
         for word, pos in seg_cut:
+            # 跳过英语
             if pos == "eng":
                 continue
+            # 词语分为声母韵母
+            # 都是list
             sub_initials, sub_finals = _get_initials_finals(word)
+            # 调整韵母
             sub_finals = tone_modifier.modified_tone(word, pos, sub_finals)
             initials.append(sub_initials)
             finals.append(sub_finals)
 
             # assert len(sub_initials) == len(sub_finals) == len(word)
+        # 把二维列表合并到一维
+        # 也就是把单词还原到句子
+        # 那为什么之前还要分词？
         initials = sum(initials, [])
         finals = sum(finals, [])
-        #
+        
         for c, v in zip(initials, finals):
             raw_pinyin = c + v
             # NOTE: post process for pypinyin outputs

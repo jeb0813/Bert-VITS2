@@ -91,6 +91,8 @@ def run():
             drop_last=False,
             collate_fn=collate_fn,
         )
+    
+    # extra params
     if (
         "use_noise_scaled_mas" in hps.model.keys()
         and hps.model.use_noise_scaled_mas is True
@@ -125,6 +127,7 @@ def run():
     else:
         print("Using normal encoder for VITS1")
 
+    # 生成器
     net_g = SynthesizerTrn(
         len(symbols),
         hps.data.filter_length // 2 + 1,
@@ -135,6 +138,7 @@ def run():
         **hps.model,
     ).cuda(rank)
 
+    # 判别器
     net_d = MultiPeriodDiscriminator(hps.model.use_spectral_norm).cuda(rank)
     optim_g = torch.optim.AdamW(
         filter(lambda p: p.requires_grad, net_g.parameters()),
@@ -148,6 +152,8 @@ def run():
         betas=hps.train.betas,
         eps=hps.train.eps,
     )
+
+    # duration predictor的判别器，本体在哪？
     if net_dur_disc is not None:
         optim_dur_disc = torch.optim.AdamW(
             net_dur_disc.parameters(),
@@ -157,8 +163,10 @@ def run():
         )
     else:
         optim_dur_disc = None
+    
     net_g = DDP(net_g, device_ids=[rank], find_unused_parameters=True)
     net_d = DDP(net_d, device_ids=[rank], find_unused_parameters=True)
+
     if net_dur_disc is not None:
         net_dur_disc = DDP(net_dur_disc, device_ids=[rank], find_unused_parameters=True)
     try:
@@ -275,6 +283,7 @@ def train_and_evaluate(
         speakers,
         tone,
         language,
+        # here bert comes
         bert,
         ja_bert,
     ) in tqdm(enumerate(train_loader)):

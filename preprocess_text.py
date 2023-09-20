@@ -43,7 +43,11 @@ def main(
         for line in tqdm(open(transcription_path, encoding="utf-8").readlines()):
             try:
                 utt, spk, language, text = line.strip().split("|")
+                # 这一步做了预处理
                 norm_text, phones, tones, word2ph = clean_text(text, language)
+                # 然后把text替换成了norm_text
+                # 加入了 phones, tones, word2ph
+                # {wav_path}|{speaker_name}|{language}|{norm_text}|{phones}|{tones}|{word2ph}
                 out_file.write(
                     "{}|{}|{}|{}|{}|{}|{}\n".format(
                         utt,
