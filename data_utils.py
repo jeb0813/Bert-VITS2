@@ -89,6 +89,7 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
         # separate filename, speaker_id and text
         audiopath, sid, language, text, phones, tone, word2ph = audiopath_sid_text
 
+        # 这里加载了 bert，为什么中日文的要分开？
         bert, ja_bert, phones, tone, language = self.get_text(
             text, word2ph, phones, tone, language, audiopath
         )
@@ -147,7 +148,11 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
             for i in range(len(word2ph)):
                 word2ph[i] = word2ph[i] * 2
             word2ph[0] += 1
+
+        # here bert comes
         bert_path = wav_path.replace(".wav", ".bert.pt")
+        # 获取 bert embedding 并缓存
+        # 这里的 bert embedding 形状和音素序列一致，内容是 bert 输出的概率
         try:
             bert = torch.load(bert_path)
             assert bert.shape[-1] == len(phone)
@@ -166,8 +171,6 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
             bert = torch.zeros(1024, len(phone))
             ja_bert = torch.zeros(768, len(phone))
 
-        # 这里利用了bert
-        # 它具体做了什么？
         assert bert.shape[-1] == len(phone), (
             bert.shape,
             len(phone),

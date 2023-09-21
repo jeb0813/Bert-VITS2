@@ -867,9 +867,13 @@ class SynthesizerTrn(nn.Module):
             g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
         else:
             g = self.ref_enc(y.transpose(1, 2)).unsqueeze(-1)
+        
+        # 先验编码器
         x, m_p, logs_p, x_mask = self.enc_p(
             x, x_lengths, tone, language, bert, ja_bert, g=g
         )
+
+        # 后验编码器
         z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
         z_p = self.flow(z, y_mask, g=g)
 

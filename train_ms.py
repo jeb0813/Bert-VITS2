@@ -49,17 +49,20 @@ def run():
         init_method="env://",  # Due to some training problem,we proposed to use gloo instead of nccl.
     )  # Use torchrun instead of mp.spawn
     rank = dist.get_rank()
+    # 分布式训练上线要注意改一下
     n_gpus = dist.get_world_size()
     hps = utils.get_hparams()
     torch.manual_seed(hps.train.seed)
     torch.cuda.set_device(rank)
     global global_step
+    # 初始化logger
     if rank == 0:
         logger = utils.get_logger(hps.model_dir)
         logger.info(hps)
         utils.check_git_hash(hps.model_dir)
         writer = SummaryWriter(log_dir=hps.model_dir)
         writer_eval = SummaryWriter(log_dir=os.path.join(hps.model_dir, "eval"))
+    
     train_dataset = TextAudioSpeakerLoader(hps.data.training_files, hps.data)
     train_sampler = DistributedBucketSampler(
         train_dataset,
@@ -80,6 +83,7 @@ def run():
         persistent_workers=True,
         prefetch_factor=4,
     )  # DataLoader config could be adjusted.
+    
     if rank == 0:
         eval_dataset = TextAudioSpeakerLoader(hps.data.validation_files, hps.data)
         eval_loader = DataLoader(
