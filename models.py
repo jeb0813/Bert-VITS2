@@ -356,6 +356,7 @@ class TextEncoder(nn.Module):
     def forward(self, x, x_lengths, tone, language, bert, ja_bert, g=None):
         bert_emb = self.bert_proj(bert).transpose(1, 2)
         ja_bert_emb = self.ja_bert_proj(ja_bert).transpose(1, 2)
+        # 这里直接把bert embedding加上去了，就和Transformer Postional Encoding一样
         x = (
             self.emb(x)
             + self.tone_emb(tone)
@@ -798,6 +799,7 @@ class SynthesizerTrn(nn.Module):
         self.current_mas_noise_scale = self.mas_noise_scale_initial
         if self.use_spk_conditioned_encoder and gin_channels > 0:
             self.enc_gin_channels = gin_channels
+        # 先验编码器
         self.enc_p = TextEncoder(
             n_vocab,
             inter_channels,
@@ -809,6 +811,7 @@ class SynthesizerTrn(nn.Module):
             p_dropout,
             gin_channels=self.enc_gin_channels,
         )
+        # 生成器
         self.dec = Generator(
             inter_channels,
             resblock,
@@ -819,6 +822,7 @@ class SynthesizerTrn(nn.Module):
             upsample_kernel_sizes,
             gin_channels=gin_channels,
         )
+        # 后验编码器
         self.enc_q = PosteriorEncoder(
             spec_channels,
             inter_channels,
@@ -910,9 +914,11 @@ class SynthesizerTrn(nn.Module):
 
         w = attn.sum(2)
 
+        # using sdp
         l_length_sdp = self.sdp(x, x_mask, w, g=g)
         l_length_sdp = l_length_sdp / torch.sum(x_mask)
 
+        # using dp
         logw_ = torch.log(w + 1e-6) * x_mask
         logw = self.dp(x, x_mask, g=g)
         l_length_dp = torch.sum((logw - logw_) ** 2, [1, 2]) / torch.sum(
