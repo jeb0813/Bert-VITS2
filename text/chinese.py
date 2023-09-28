@@ -69,6 +69,7 @@ def g2p(text):
     pattern = r"(?<=[{0}])\s*".format("".join(punctuation))
     # 根据标点符号分句
     sentences = [i for i in re.split(pattern, text) if i.strip() != ""]
+    # 这里是以句子为单位
     phones, tones, word2ph = _g2p(sentences)
     assert sum(word2ph) == len(phones)
     assert len(word2ph) == len(text)  # Sometimes it will crash,you can add a try-catch.
@@ -106,6 +107,8 @@ def _g2p(segments):
         finals = []
         # 预处理分词，合并一些词汇
         seg_cut = tone_modifier.pre_merge_for_modify(seg_cut)
+        
+        # 单词，词性
         for word, pos in seg_cut:
             # 跳过英语
             if pos == "eng":
