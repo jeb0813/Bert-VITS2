@@ -1,6 +1,8 @@
 import torch
 import sys
+
 from transformers import AutoTokenizer, AutoModelForMaskedLM
+# from .. import transformers
 
 tokenizer = AutoTokenizer.from_pretrained("./bert/chinese-roberta-wwm-ext-large")
 

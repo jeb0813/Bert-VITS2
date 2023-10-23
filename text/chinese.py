@@ -69,7 +69,7 @@ def g2p(text):
     pattern = r"(?<=[{0}])\s*".format("".join(punctuation))
     # 根据标点符号分句
     sentences = [i for i in re.split(pattern, text) if i.strip() != ""]
-    # 这里是以句子为单位
+    # 这里是以句子为单位，句子保留了标点符号
     phones, tones, word2ph = _g2p(sentences)
     assert sum(word2ph) == len(phones)
     assert len(word2ph) == len(text)  # Sometimes it will crash,you can add a try-catch.
@@ -206,6 +206,8 @@ if __name__ == "__main__":
     bert = get_bert_feature(text, word2ph)
 
     print(phones, tones, word2ph, bert.shape)
+
+
 
 
 # # 示例用法
