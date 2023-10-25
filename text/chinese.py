@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/data3/chenziang/codes/Bert-VITS2")
+
 import os
 import re
 
@@ -199,13 +202,15 @@ def get_bert_feature(text, word2ph):
 if __name__ == "__main__":
     from text.chinese_bert import get_bert_feature
 
-    text = "啊！但是《原神》是由,米哈\游自主，  [研发]的一款全.新开放世界.冒险游戏"
+    text = "苟利国家生死以，岂因祸福避趋之。"
     text = text_normalize(text)
     print(text)
     phones, tones, word2ph = g2p(text)
+    print(phones)
+    print(word2ph)
     bert = get_bert_feature(text, word2ph)
 
-    print(phones, tones, word2ph, bert.shape)
+    # print(phones, tones, word2ph, bert.shape)
 
 
 

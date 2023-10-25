@@ -93,7 +93,7 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
         bert, ja_bert, phones, tone, language = self.get_text(
             text, word2ph, phones, tone, language, audiopath
         )
-
+        
         spec, wav = self.get_audio(audiopath)
         sid = torch.LongTensor([int(self.spk_map[sid])])
         return (phones, spec, wav, sid, tone, language, bert, ja_bert)

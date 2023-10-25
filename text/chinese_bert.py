@@ -27,17 +27,22 @@ def get_bert_feature(text, word2ph, device=None):
         for i in inputs:
             inputs[i] = inputs[i].to(device)
         res = models[device](**inputs, output_hidden_states=True)
+        print(len(res["hidden_states"]))
+        print(res["hidden_states"])
         res = torch.cat(res["hidden_states"][-3:-2], -1)[0].cpu()
+    
 
     assert len(word2ph) == len(text) + 2
     word2phone = word2ph
     phone_level_feature = []
+
     for i in range(len(word2phone)):
         repeat_feature = res[i].repeat(word2phone[i], 1)
         phone_level_feature.append(repeat_feature)
 
     phone_level_feature = torch.cat(phone_level_feature, dim=0)
 
+    print("phone_level_feature.shape",phone_level_feature.shape)
     return phone_level_feature.T
 
 
