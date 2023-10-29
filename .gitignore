@@ -166,6 +166,18 @@ cython_debug/
 filelists/*
 !/filelists/esd.list
 data/*
+/config.yml
+/Web/
+/emotional/*/*.bin
+/bert/*/*.bin
+/bert/*/*.h5
+/bert/*/*.model
+/bert/*/*.safetensors
+/bert/*/*.msgpack
+asr_transcript.py
+extract_list.py
+/Data
+Data/*
 
 
 # checkpoints
