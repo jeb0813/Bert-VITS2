@@ -357,11 +357,7 @@ class TextEncoder(nn.Module):
     def forward(self, x, x_lengths, tone, language, bert, ja_bert, en_bert, g=None):
         bert_emb = self.bert_proj(bert).transpose(1, 2)
         ja_bert_emb = self.ja_bert_proj(ja_bert).transpose(1, 2)
-<<<<<<< HEAD
-        # 这里直接把bert embedding加上去了，就和Transformer Postional Encoding一样
-=======
         en_bert_emb = self.en_bert_proj(en_bert).transpose(1, 2)
->>>>>>> upgrade_english/master
         x = (
             self.emb(x)
             + self.tone_emb(tone)
