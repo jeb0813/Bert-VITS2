@@ -1,5 +1,6 @@
 # flake8: noqa: E402
 
+import platform
 import os
 import torch
 from torch.nn import functional as F
@@ -50,15 +51,28 @@ def run():
     envs = config.train_ms_config.env
     for env_name, env_value in envs.items():
         if env_name not in os.environ.keys():
+            print("加载config中的配置{}".format(str(env_value)))
             os.environ[env_name] = str(env_value)
+    print(
+        "加载环境变量 \nMASTER_ADDR: {},\nMASTER_PORT: {},\nWORLD_SIZE: {},\nRANK: {},\nLOCAL_RANK: {}".format(
+            os.environ["MASTER_ADDR"],
+            os.environ["MASTER_PORT"],
+            os.environ["WORLD_SIZE"],
+            os.environ["RANK"],
+            os.environ["LOCAL_RANK"],
+        )
+    )
 
     # 多卡训练设置
+    backend = "nccl"
+    if platform.system() == "Windows":
+        backend = "gloo"
     dist.init_process_group(
-        backend="nccl",
+        backend=backend,
         init_method="env://",  # If Windows,switch to gloo backend.
     )  # Use torchrun instead of mp.spawn
     rank = dist.get_rank()
-    # 分布式训练上线要注意改一下
+    local_rank = int(os.environ["LOCAL_RANK"])
     n_gpus = dist.get_world_size()
 
     # 命令行/config.yml配置解析
@@ -96,7 +110,8 @@ def run():
             f.write(data)
 
     torch.manual_seed(hps.train.seed)
-    torch.cuda.set_device(rank)
+    torch.cuda.set_device(local_rank)
+
     global global_step
     # 初始化logger
     if rank == 0:
@@ -162,7 +177,7 @@ def run():
             3,
             0.1,
             gin_channels=hps.model.gin_channels if hps.data.n_speakers != 0 else 0,
-        ).cuda(rank)
+        ).cuda(local_rank)
     if (
         "use_spk_conditioned_encoder" in hps.model.keys()
         and hps.model.use_spk_conditioned_encoder is True
@@ -183,10 +198,9 @@ def run():
         mas_noise_scale_initial=mas_noise_scale_initial,
         noise_scale_delta=noise_scale_delta,
         **hps.model,
-    ).cuda(rank)
+    ).cuda(local_rank)
 
-    # 判别器
-    net_d = MultiPeriodDiscriminator(hps.model.use_spectral_norm).cuda(rank)
+    net_d = MultiPeriodDiscriminator(hps.model.use_spectral_norm).cuda(local_rank)
     optim_g = torch.optim.AdamW(
         filter(lambda p: p.requires_grad, net_g.parameters()),
         hps.train.learning_rate,
@@ -210,12 +224,23 @@ def run():
         )
     else:
         optim_dur_disc = None
-    
-    net_g = DDP(net_g, device_ids=[rank], find_unused_parameters=True)
-    net_d = DDP(net_d, device_ids=[rank], find_unused_parameters=True)
+    net_g = DDP(net_g, device_ids=[local_rank])
+    net_d = DDP(net_d, device_ids=[local_rank])
     dur_resume_lr = None
     if net_dur_disc is not None:
-        net_dur_disc = DDP(net_dur_disc, device_ids=[rank], find_unused_parameters=True)
+        net_dur_disc = DDP(
+            net_dur_disc, device_ids=[local_rank], find_unused_parameters=True
+        )
+
+    # 下载底模
+    if config.train_ms_config.base["use_base_model"]:
+        utils.download_checkpoint(
+            hps.model_dir,
+            config.train_ms_config.base,
+            token=config.openi_token,
+            mirror=config.mirror,
+        )
+
     try:
         if net_dur_disc is not None:
             _, _, dur_resume_lr, epoch_str = utils.load_checkpoint(
@@ -251,6 +276,9 @@ def run():
 
         epoch_str = max(epoch_str, 1)
         global_step = (epoch_str - 1) * len(train_loader)
+        print(
+            f"******************检测到模型存在，epoch为 {epoch_str}，gloabl step为 {global_step}*********************"
+        )
     except Exception as e:
         print(e)
         epoch_str = 1
@@ -276,6 +304,7 @@ def run():
         if rank == 0:
             train_and_evaluate(
                 rank,
+                local_rank,
                 epoch,
                 hps,
                 [net_g, net_d, net_dur_disc],
@@ -289,6 +318,7 @@ def run():
         else:
             train_and_evaluate(
                 rank,
+                local_rank,
                 epoch,
                 hps,
                 [net_g, net_d, net_dur_disc],
@@ -306,7 +336,17 @@ def run():
 
 
 def train_and_evaluate(
-    rank, epoch, hps, nets, optims, schedulers, scaler, loaders, logger, writers
+    rank,
+    local_rank,
+    epoch,
+    hps,
+    nets,
+    optims,
+    schedulers,
+    scaler,
+    loaders,
+    logger,
+    writers,
 ):
     net_g, net_d, net_dur_disc = nets
     optim_g, optim_d, optim_dur_disc = optims
@@ -322,6 +362,7 @@ def train_and_evaluate(
     net_d.train()
     if net_dur_disc is not None:
         net_dur_disc.train()
+
     for batch_idx, (
         x,
         x_lengths,
@@ -343,21 +384,21 @@ def train_and_evaluate(
                 - net_g.module.noise_scale_delta * global_step
             )
             net_g.module.current_mas_noise_scale = max(current_mas_noise_scale, 0.0)
-        x, x_lengths = x.cuda(rank, non_blocking=True), x_lengths.cuda(
-            rank, non_blocking=True
+        x, x_lengths = x.cuda(local_rank, non_blocking=True), x_lengths.cuda(
+            local_rank, non_blocking=True
         )
-        spec, spec_lengths = spec.cuda(rank, non_blocking=True), spec_lengths.cuda(
-            rank, non_blocking=True
+        spec, spec_lengths = spec.cuda(
+            local_rank, non_blocking=True
+        ), spec_lengths.cuda(local_rank, non_blocking=True)
+        y, y_lengths = y.cuda(local_rank, non_blocking=True), y_lengths.cuda(
+            local_rank, non_blocking=True
         )
-        y, y_lengths = y.cuda(rank, non_blocking=True), y_lengths.cuda(
-            rank, non_blocking=True
-        )
-        speakers = speakers.cuda(rank, non_blocking=True)
-        tone = tone.cuda(rank, non_blocking=True)
-        language = language.cuda(rank, non_blocking=True)
-        bert = bert.cuda(rank, non_blocking=True)
-        ja_bert = ja_bert.cuda(rank, non_blocking=True)
-        en_bert = en_bert.cuda(rank, non_blocking=True)
+        speakers = speakers.cuda(local_rank, non_blocking=True)
+        tone = tone.cuda(local_rank, non_blocking=True)
+        language = language.cuda(local_rank, non_blocking=True)
+        bert = bert.cuda(local_rank, non_blocking=True)
+        ja_bert = ja_bert.cuda(local_rank, non_blocking=True)
+        en_bert = en_bert.cuda(local_rank, non_blocking=True)
 
         with autocast(enabled=hps.train.fp16_run):
             (

@@ -3,16 +3,28 @@ sys.path.append("/data3/chenziang/codes/Bert-VITS2")
 
 import torch
 from transformers import DebertaV2Model, DebertaV2Tokenizer
-from config import config
-import sys
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-tokenizer = DebertaV2Tokenizer.from_pretrained("./bert/deberta-v3-large")
-models =DebertaV2Model.from_pretrained("./bert/deberta-v3-large").to(device)
+from config import config
+
+
+LOCAL_PATH = "./bert/deberta-v3-large"
+
+tokenizer = DebertaV2Tokenizer.from_pretrained(LOCAL_PATH)
+
+models = dict()
 
 
 def get_bert_feature(text, word2ph, device=config.bert_gen_config.device):
-
+    if (
+        sys.platform == "darwin"
+        and torch.backends.mps.is_available()
+        and device == "cpu"
+    ):
+        device = "mps"
+    if not device:
+        device = "cuda"
+    if device not in models.keys():
+        models[device] = DebertaV2Model.from_pretrained(LOCAL_PATH).to(device)
     with torch.no_grad():
         # 分词情况
         tokens = tokenizer.tokenize(text)
